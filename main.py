@@ -8,7 +8,7 @@ import http.server
 import socketserver
 
 # --- CONFIGURAÇÕES ---
-TOKEN = "8711199299:AAFWLWO6s5hwbuC9tTkU4KKVOuwV4255cgg"
+TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = "8121263752"
 bot = telebot.TeleBot(TOKEN)
 
