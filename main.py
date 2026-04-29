@@ -1,75 +1,82 @@
+import telebot
 import requests
 from bs4 import BeautifulSoup
 import time
 import os
-import http.server
-import socketserver
 import threading
 
-# --- CONFIGURAÇÕES DO TELEGRAM ---
+# --- CONFIGURAÇÕES ---
 TOKEN = "8711199299:AAFWLWO6s5hwbuC9tTkU4KKVOuwV4255cgg"
-CHAT_ID = "8121263752"
+CHAT_ID = "8121263752"  # Seu ID inserido aqui
+bot = telebot.TeleBot(TOKEN)
 
-# Dicionário com as datas do Chile
 SHOWS = {
-    "Show Dia 14/10": "https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-14-de-octubre", 
-    "Show Dia 16/10": "https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-16-de-octubre",
-    "Show Dia 17/10": "https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-17-de-octubre"
+    "14/10": "https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-14-de-octubre",
+    "16/10": "https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-16-de-octubre",
+    "17/10": "https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-17-de-octubre"
 }
 
-# Guarda o que o bot viu na última vez em cada site
-estados_anteriores = {nome: "" for nome in SHOWS}
+# Histórico para comparar mudanças
+historico_texto = {data: "" for data in SHOWS}
 
-# --- FUNÇÃO PARA O RENDER NÃO DESLIGAR O BOT ---
-def rodar_servidor():
-    # Isso faz o Render achar que o bot é um site e mantém ele vivo
-    port = int(os.environ.get("PORT", 8080))
-    handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", port), handler) as httpd:
-        print(f"Servidor de monitoramento rodando na porta {port}")
-        httpd.serve_forever()
+def checar_sites():
+    while True:
+        for data, url in SHOWS.items():
+            try:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+                res = requests.get(url, headers=headers, timeout=15)
+                soup = BeautifulSoup(res.text, 'html.parser')
+                
+                # Pegamos o texto limpo da página para detectar qualquer mudança (preço, setor, etc)
+                texto_atual = soup.get_text()
 
-def enviar_telegram(mensagem):
-    url_api = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": mensagem}
-    try:
-        requests.post(url_api, data=payload)
-    except Exception as e:
-        print(f"Erro ao enviar para o Telegram: {e}")
-
-# Inicia o servidor fantasma em uma "thread" separada
-threading.Thread(target=rodar_servidor, daemon=True).start()
-
-print("🚀 Bot Multi-Datas Iniciado! Monitorando 14, 16 e 17 de Outubro...")
-enviar_telegram("✅ Monitoramento ATIVO para os shows de 14, 16 e 17/10 no Chile!")
-
-while True:
-    for nome_show, url in SHOWS.items():
-        try:
-            # O bot visita um link de cada vez com um cabeçalho para parecer um navegador real
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-            resposta = requests.get(url, headers=headers, timeout=15)
-            soup = BeautifulSoup(resposta.text, 'html.parser')
+                if historico_texto[data] != "" and texto_atual != historico_texto[data]:
+                    msg = f"🚨 **MUDANÇA DETECTADA NO SITE!**\n\n📅 **Show Dia:** {data}\n\nHouve uma alteração nos setores ou preços. Verifique rápido:\n🔗 {url}"
+                    bot.send_message(CHAT_ID, msg)
+                    print(f"Alteração enviada para o dia {data}")
+                
+                historico_texto[data] = texto_atual
+            except Exception as e:
+                print(f"Erro ao checar {data}: {e}")
             
-            # Pega o texto principal da página
-            estado_atual = soup.get_text()
-            
-            # Se o site mudou desde a última vez...
-            if estados_anteriores[nome_show] != "" and estado_atual != estados_anteriores[nome_show]:
-                mensagem = f"🚨 NOVIDADE NO CHILE!\n\n📅 DATA: {nome_show}\n🔗 Link: {url}"
-                enviar_telegram(mensagem)
-                print(f"Alteração detectada no {nome_show}!")
-            
-            estados_anteriores[nome_show] = estado_atual
-            
-        except Exception as e:
-            print(f"Erro ao acessar {nome_show}: {e}")
+            time.sleep(10) # Pausa entre as datas
         
-        # Espera 10 segundos entre um link e outro
-        time.sleep(10)
+        print("Ciclo de vigilância completo. Aguardando 2 minutos...")
+        time.sleep(120)
 
-    # Descansa por 2 minutos antes de checar tudo de novo
-    print("Vigilância completa. Aguardando próximo ciclo...")
-    time.sleep(120)
+# --- COMANDOS INTERATIVOS ---
+
+@bot.message_handler(commands=['start', 'ajuda'])
+def enviar_boas_vindas(message):
+    msg = (
+        "👋 **Olá! Eu sou seu monitor de ingressos do BTS Chile.**\n\n"
+        "Comandos disponíveis:\n"
+        "👉 `/status` - Verifica se estou acordado e vigiando.\n"
+        "👉 `/link` - Envia os links de compra das 3 datas.\n\n"
+        "Se qualquer setor abrir ou o preço mudar, eu te aviso aqui na hora!"
+    )
+    bot.reply_to(message, msg)
+
+@bot.message_handler(commands=['status'])
+def enviar_status(message):
+    resposta = "📊 **Status do Monitoramento:**\n"
+    for data in SHOWS.keys():
+        resposta += f"✅ Dia {data}: Monitorando setores e valores...\n"
+    resposta += "\n🕒 Checagem automática a cada 2 minutos."
+    bot.send_message(message.chat.id, resposta)
+
+@bot.message_handler(commands=['link'])
+def enviar_links(message):
+    msg = "🔗 **Links Oficiais (Ticketmaster CL):**\n\n"
+    for data, url in SHOWS.items():
+        msg += f"📅 {data}: {url}\n\n"
+    bot.send_message(message.chat.id, msg)
+
+# Rodar o monitor de sites em uma linha separada
+threading.Thread(target=checar_sites, daemon=True).start()
+
+# Rodar o bot para responder seus comandos
+print("Bot online e aguardando comandos...")
+bot.infinity_polling()
