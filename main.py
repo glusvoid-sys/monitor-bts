@@ -61,6 +61,9 @@ def checar_sites():
 @bot.message_handler(commands=['status'])
 def enviar_status(message):
     bot.reply_to(message, "✅ Monitor chileno ativo! Analisando preços e disponibilidade em espanhol.")
+@bot.message_handler(commands=['link'])
+def enviar_link(message):
+    bot.reply_to(message, "🔗 Link do show no Chile: https://www.ticketmaster.cl/event/bts-world-tour-arirang-santiago")    
 
 threading.Thread(target=rodar_servidor_fantasma, daemon=True).start()
 threading.Thread(target=checar_sites, daemon=True).start()
