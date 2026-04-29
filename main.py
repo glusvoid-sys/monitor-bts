@@ -58,9 +58,17 @@ def checar_sites():
             time.sleep(15)
         time.sleep(180)
 
-@bot.message_handler(commands=['status'])
-def enviar_status(message):
-    bot.reply_to(message, "✅ Monitor chileno ativo! Analisando preços e disponibilidade em espanhol.")
+@bot.message_handler(commands=['start'])
+def enviar_boas_vindas(message):
+    texto = (
+        "✨ **Bem-vinda ao Monitor de Ingressos BTS Chile!** ✨\n\n"
+        "Estou aqui para te ajudar a garantir seu lugar no show. "
+        "Vou monitorar os links da Ticketmaster e te avisar se algo mudar!\n\n"
+        "📌 **Comandos disponíveis:**\n"
+        "/link - Abre os botões com os links de compra\n"
+        "/status - Verifica se o monitor está rodando agora"
+    )
+    bot.reply_to(message, texto, parse_mode="Markdown")
 @bot.message_handler(commands=['link'])
 def enviar_link(message):
     markup = types.InlineKeyboardMarkup()
@@ -75,9 +83,9 @@ def enviar_link(message):
     
     bot.send_message(message.chat.id, "💜 **SELECIONE A DATA DO SHOW:**", reply_markup=markup, parse_mode="Markdown")
 threading.Thread(target=rodar_servidor_fantasma, daemon=True).start()
-threading.Thread(target=checar_sites, daemon=True).start()
+threading.Thread(target=verificar_ingressos, daemon=True).start()
 bot.infinity_polling()
-import time
+
 
 def verificar_ingressos():
     while True:
