@@ -63,8 +63,27 @@ def enviar_status(message):
     bot.reply_to(message, "✅ Monitor chileno ativo! Analisando preços e disponibilidade em espanhol.")
 @bot.message_handler(commands=['link'])
 def enviar_link(message):
-    bot.reply_to(message, "🔗 Link do show no Chile: https://www.ticketmaster.cl/event/bts-world-tour-arirang-santiago")    
-
+    markup = types.InlineKeyboardMarkup()
+    # Criando os botões para cada data
+    btn14 = types.InlineKeyboardButton("🎫 Ingresso 14/10", url="https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-14-de-octubre")
+    btn16 = types.InlineKeyboardButton("🎫 Ingresso 16/10", url="https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-16-de-octubre")
+    btn17 = types.InlineKeyboardButton("🎫 Ingresso 17/10", url="https://www.ticketmaster.cl/event/bts-world-tour-arirang-live-2026-scl-venta-general-17-de-octubre")
+    
+    markup.add(btn14)
+    markup.add(btn16)
+    markup.add(btn17)
+    
+    bot.send_message(message.chat.id, "💜 **SELECIONE A DATA DO SHOW:**", reply_markup=markup, parse_mode="Markdown")
 threading.Thread(target=rodar_servidor_fantasma, daemon=True).start()
 threading.Thread(target=checar_sites, daemon=True).start()
 bot.infinity_polling()
+import time
+
+def verificar_ingressos():
+    while True:
+        for data, url in SHOWS.items():
+            # Aqui o bot vai "visitar" o site silenciosamente
+            # Se ele detectar mudança, ele te envia mensagem
+            print(f"Checando ingressos para {data}...")
+            # (Lógica de busca aqui)
+        time.sleep(300) # Espera 5 minutos para checar de novo
