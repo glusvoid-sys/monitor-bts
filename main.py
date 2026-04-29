@@ -1,4 +1,5 @@
 import telebot
+from telebot import types
 import requests
 from bs4 import BeautifulSoup
 import time
